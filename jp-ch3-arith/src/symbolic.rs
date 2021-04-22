@@ -1,51 +1,47 @@
-use super::arith::{Arithmetic, Expr, Value};
+use super::arith::{
+    register_add, register_display, register_div, register_mul, register_sub, Value,
+};
 
-pub fn sym(ch: char) -> Expr {
-    Expr::new_value(format!("{}", ch))
+pub fn sym(ch: char) -> Value {
+    Value::new(format!("{}", ch))
 }
 
-fn to_symbol(x: Value) -> Option<String> {
-    if let Some(symbol) = x.cast::<String>() {
-        Some(symbol.to_owned())
-    } else if let Some(num) = x.cast::<f32>() {
-        Some(format!("{}", num))
-    } else {
-        None
+fn to_symbols(x: Value, y: Value) -> Option<(String, String)> {
+    let xsym = x.cast::<String>();
+    let ysym = y.cast::<String>();
+    // If at least one of the args is a symbol, do symbolic arith
+    match (xsym, ysym) {
+        (Some(xsym), Some(ysym)) => Some((xsym, ysym)),
+        (Some(xsym), None) => Some((xsym, y.to_string())),
+        (None, Some(ysym)) => Some((x.to_string(), ysym)),
+        (None, None) => None,
     }
 }
 
 fn symbolic_display(x: Value) -> Option<String> {
-    to_symbol(x)
+    x.cast::<String>()
 }
 
 fn symbolic_add(x: Value, y: Value) -> Option<Value> {
-    let x: String = to_symbol(x)?;
-    let y: String = to_symbol(y)?;
-    Some(Value::new(format!("({} + {})", x, y)))
+    to_symbols(x, y).map(|(x, y)| Value::new(format!("({} + {})", x, y)))
 }
 
 fn symbolic_sub(x: Value, y: Value) -> Option<Value> {
-    let x: String = to_symbol(x)?;
-    let y: String = to_symbol(y)?;
-    Some(Value::new(format!("({} - {})", x, y)))
+    to_symbols(x, y).map(|(x, y)| Value::new(format!("({} - {})", x, y)))
 }
 
 fn symbolic_mul(x: Value, y: Value) -> Option<Value> {
-    let x: String = to_symbol(x)?;
-    let y: String = to_symbol(y)?;
-    Some(Value::new(format!("({} * {})", x, y)))
+    to_symbols(x, y).map(|(x, y)| Value::new(format!("({} * {})", x, y)))
 }
 
 fn symbolic_div(x: Value, y: Value) -> Option<Value> {
-    let x: String = to_symbol(x)?;
-    let y: String = to_symbol(y)?;
-    Some(Value::new(format!("({} / {})", x, y)))
+    to_symbols(x, y).map(|(x, y)| Value::new(format!("({} / {})", x, y)))
 }
 
-pub fn register_symbolic_arithmetic(arithmetic: &mut Arithmetic) {
-    arithmetic.register_display(symbolic_display);
-    arithmetic.register_add(symbolic_add);
-    arithmetic.register_sub(symbolic_sub);
-    arithmetic.register_mul(symbolic_mul);
-    arithmetic.register_div(symbolic_div);
+pub fn register_symbolic_arithmetic() {
+    register_display(symbolic_display);
+    register_add(symbolic_add);
+    register_sub(symbolic_sub);
+    register_mul(symbolic_mul);
+    register_div(symbolic_div);
 }

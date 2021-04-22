@@ -1,14 +1,14 @@
+use once_cell::sync::Lazy;
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct Value(Arc<dyn Any>);
 
 impl Value {
-    pub fn new<T: Any + fmt::Display>(value: T) -> Value {
+    pub fn new<T: Any + Clone>(value: T) -> Value {
         Value(Arc::new(value))
     }
 
@@ -17,124 +17,109 @@ impl Value {
     }
 }
 
-pub enum Expr {
-    Value(Value),
-    Op(Op, Box<Expr>, Box<Expr>),
-}
-
-impl Expr {
-    pub fn new_value<T: Any + fmt::Display>(value: T) -> Expr {
-        Expr::Value(Value::new(value))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Op {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
-
-impl Add<Expr> for Expr {
-    type Output = Expr;
-    fn add(self, other: Expr) -> Expr {
-        Expr::Op(Op::Add, Box::new(self), Box::new(other))
-    }
-}
-
-impl Sub<Expr> for Expr {
-    type Output = Expr;
-    fn sub(self, other: Expr) -> Expr {
-        Expr::Op(Op::Sub, Box::new(self), Box::new(other))
-    }
-}
-
-impl Mul<Expr> for Expr {
-    type Output = Expr;
-    fn mul(self, other: Expr) -> Expr {
-        Expr::Op(Op::Mul, Box::new(self), Box::new(other))
-    }
-}
-
-impl Div<Expr> for Expr {
-    type Output = Expr;
-    fn div(self, other: Expr) -> Expr {
-        Expr::Op(Op::Div, Box::new(self), Box::new(other))
-    }
-}
-
 pub type DisplayProc = fn(Value) -> Option<String>;
 pub type OpProc = fn(Value, Value) -> Option<Value>;
 
-pub struct Arithmetic {
-    display_handlers: Vec<DisplayProc>,
-    op_handlers: HashMap<Op, Vec<OpProc>>,
+pub fn register_display(display: DisplayProc) {
+    let mut arith = ARITH.write().unwrap();
+    arith.displayers.push(display);
+}
+
+pub fn register_add(adder: OpProc) {
+    let mut arith = ARITH.write().unwrap();
+    arith.adders.push(adder);
+}
+
+pub fn register_sub(suber: OpProc) {
+    let mut arith = ARITH.write().unwrap();
+    arith.subers.push(suber);
+}
+
+pub fn register_mul(muler: OpProc) {
+    let mut arith = ARITH.write().unwrap();
+    arith.mulers.push(muler);
+}
+
+pub fn register_div(diver: OpProc) {
+    let mut arith = ARITH.write().unwrap();
+    arith.divers.push(diver);
+}
+
+static ARITH: Lazy<RwLock<Arithmetic>> = Lazy::new(|| RwLock::new(Arithmetic::new()));
+
+fn display(arith: &Arithmetic, value: &Value) -> String {
+    for displayer in &arith.displayers {
+        if let Some(string) = displayer(value.clone()) {
+            return string;
+        }
+    }
+    panic!("No display handler matched");
+}
+
+fn apply_op(handlers: &[OpProc], left: &Value, right: &Value) -> Value {
+    for op in handlers {
+        if let Some(answer) = op(left.clone(), right.clone()) {
+            return answer;
+        }
+    }
+    panic!("No op handler matched");
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let arith = ARITH.read().unwrap();
+        write!(f, "{}", display(&arith, self))
+    }
+}
+
+impl Add<Value> for Value {
+    type Output = Value;
+    fn add(self, other: Value) -> Value {
+        let arith = ARITH.read().unwrap();
+        apply_op(&arith.adders, &self, &other)
+    }
+}
+
+impl Sub<Value> for Value {
+    type Output = Value;
+    fn sub(self, other: Value) -> Value {
+        let arith = ARITH.read().unwrap();
+        apply_op(&arith.subers, &self, &other)
+    }
+}
+
+impl Mul<Value> for Value {
+    type Output = Value;
+    fn mul(self, other: Value) -> Value {
+        let arith = ARITH.read().unwrap();
+        apply_op(&arith.mulers, &self, &other)
+    }
+}
+
+impl Div<Value> for Value {
+    type Output = Value;
+    fn div(self, other: Value) -> Value {
+        let arith = ARITH.read().unwrap();
+        apply_op(&arith.divers, &self, &other)
+    }
+}
+
+struct Arithmetic {
+    displayers: Vec<DisplayProc>,
+    adders: Vec<OpProc>,
+    subers: Vec<OpProc>,
+    mulers: Vec<OpProc>,
+    divers: Vec<OpProc>,
 }
 
 impl Arithmetic {
-    pub fn new() -> Arithmetic {
-        let mut op_handlers = HashMap::new();
-        op_handlers.insert(Op::Add, vec![]);
-        op_handlers.insert(Op::Sub, vec![]);
-        op_handlers.insert(Op::Mul, vec![]);
-        op_handlers.insert(Op::Div, vec![]);
+    fn new() -> Arithmetic {
         Arithmetic {
-            op_handlers,
-            display_handlers: vec![],
-        }
-    }
-
-    pub fn register_display(&mut self, handler: DisplayProc) {
-        self.display_handlers.push(handler);
-    }
-
-    pub fn register_add(&mut self, handler: OpProc) {
-        self.register(Op::Add, handler)
-    }
-
-    pub fn register_sub(&mut self, handler: OpProc) {
-        self.register(Op::Sub, handler)
-    }
-
-    pub fn register_mul(&mut self, handler: OpProc) {
-        self.register(Op::Mul, handler)
-    }
-
-    pub fn register_div(&mut self, handler: OpProc) {
-        self.register(Op::Div, handler)
-    }
-
-    fn register(&mut self, op: Op, handler: fn(Value, Value) -> Option<Value>) {
-        self.op_handlers
-            .entry(op)
-            .or_insert_with(|| vec![])
-            .push(handler);
-    }
-
-    pub fn display(&self, value: Value) -> Option<String> {
-        for handler in &self.display_handlers {
-            if let Some(string) = handler(value.clone()) {
-                return Some(string);
-            }
-        }
-        None
-    }
-
-    pub fn eval(&self, expr: &Expr) -> Option<Value> {
-        match expr {
-            Expr::Value(value) => Some(value.clone()),
-            Expr::Op(op, x, y) => {
-                let x = self.eval(x)?;
-                let y = self.eval(y)?;
-                let handlers = self.op_handlers.get(&op)?;
-                for handler in handlers {
-                    if let Some(result) = handler(x.clone(), y.clone()) {
-                        return Some(result);
-                    }
-                }
-                None
-            }
+            displayers: Vec::new(),
+            adders: Vec::new(),
+            subers: Vec::new(),
+            mulers: Vec::new(),
+            divers: Vec::new(),
         }
     }
 }
