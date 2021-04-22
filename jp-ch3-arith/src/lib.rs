@@ -25,6 +25,10 @@ fn test_arithmetic() {
 
     let v1 = vec(vec![num(2.0), sym('x')]);
     let v2 = vec(vec![(num(1.0) + num(2.0)), num(0.0)]);
+
+    let n = v1.clone() + v2.clone();
+    assert_eq!(n.to_string(), "[5, (x + 0)]");
+
     let n = v1 * v2;
-    assert_eq!(n.to_string(), "[6, (x * 0)]");
+    assert_eq!(n.to_string(), "(6 + (x * 0))");
 }
