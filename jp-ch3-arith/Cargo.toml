@@ -1,0 +1,10 @@
+[package]
+name = "jp-ch3-arith"
+version = "0.1.0"
+authors = ["Justin <zallambo@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+once_cell = "1"
