@@ -1,26 +1,17 @@
 mod circuit_tests {
-    use jp_quantum::*;
+    use jp_quantum::gates::*;
+    use jp_quantum::{QCircuit, Vector};
 
     // for dealing with floating point imprecision
     fn similar(v1: Vector, v2: Vector) -> bool {
         (v1 - v2).norm() < 0.001
     }
 
-    fn ccz() -> QCircuit {
-        QCircuit::three_qbit_gate(&[
-            ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO,
-            ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO,
-            ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO,
-            ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO,
-            ZERO, ZERO, ZERO, ZERO, -ONE,
-        ])
-    }
-
     #[test]
     fn boring_hadamard_test() {
         let circuit = h();
         let output = circuit.run();
-        assert_eq!(output.measure(), "0.500: 0\n0.500: 1\n");
+        assert_eq!(format!("{}", output.measure()), "0.500: 0\n0.500: 1\n");
     }
 
     #[test]

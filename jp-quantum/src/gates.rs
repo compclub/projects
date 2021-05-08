@@ -37,3 +37,14 @@ pub fn cz() -> QCircuit {
         ONE, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, -ONE,
     ])
 }
+
+/// Doubly controlled Z gate
+pub fn ccz() -> QCircuit {
+    QCircuit::three_qbit_gate(&[
+        ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO,
+        ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO,
+        ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO,
+        ONE, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ONE, ZERO, ZERO, ZERO, ZERO, ZERO,
+        ZERO, ZERO, ZERO, -ONE,
+    ])
+}

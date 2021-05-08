@@ -10,6 +10,12 @@ pub struct Vector {
     pub(crate) vector: nalgebra::DVector<Complex>,
 }
 
+/// A (classical) probabililty distribution
+#[derive(Debug, Clone, PartialEq)]
+pub struct Distribution {
+    probabilities_of_bitstrings: Vec<(f64, String)>,
+}
+
 /// Parse a complex number from a string. You can also use `Complex::new(re, im)`.
 pub fn num(s: &str) -> Complex {
     use std::str::FromStr;
@@ -44,7 +50,20 @@ impl Vector {
         }
     }
 
-    pub fn measure(&self) -> String {
+    pub fn measure(&self) -> Distribution {
+        let mut distribution = Vec::new();
+        for (i, amplitude) in self.vector.iter().enumerate() {
+            let bitstring = index_to_bitstring(i, self.size);
+            let probability = amplitude.norm_sqr();
+            distribution.push((probability, bitstring));
+        }
+        Distribution {
+            probabilities_of_bitstrings: distribution,
+        }
+    }
+
+    /*
+    pub fn measure_all(&self) -> String {
         use std::fmt::Write;
 
         let mut output = String::new();
@@ -61,8 +80,33 @@ impl Vector {
         output
     }
 
+    pub fn measure(&self) -> String {
+        let mut distribution = Vec::new();
+        for (i, amplitude) in self.vector.iter().enumerate() {
+            let bitstring = index_to_bitstring(i, self.size);
+            let probability = amplitude.norm_sqr();
+            distribution.push((probability, bitstring));
+        }
+
+        format!("{}", bitstring);
+    }
+    */
+
     pub fn norm(&self) -> f64 {
         self.vector.norm()
+    }
+}
+
+impl Distribution {
+    pub fn sample(&self) -> String {
+        use rand::prelude::*;
+
+        let mut rng = thread_rng();
+        self.probabilities_of_bitstrings
+            .choose_weighted(&mut rng, |(p, _)| *p)
+            .unwrap()
+            .1
+            .clone()
     }
 }
 
@@ -71,6 +115,17 @@ impl fmt::Display for Vector {
         for (i, amplitude) in self.vector.iter().enumerate() {
             let bitstring = index_to_bitstring(i, self.size);
             write!(f, "{}: {:.3}\n", bitstring, amplitude)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Distribution {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut distribution = self.probabilities_of_bitstrings.to_owned();
+        distribution.sort_by(|(p1, _), (p2, _)| p2.partial_cmp(p1).unwrap());
+        for (p, bitstring) in distribution {
+            write!(f, "{:.3}: {}\n", p, bitstring)?;
         }
         Ok(())
     }
@@ -138,5 +193,8 @@ fn test_measure_vector() {
     let one = Complex::new(1.0, 0.0);
     let i = Complex::new(0.0, 1.0);
     let v = Vector::new(2, &[one, zero, 0.4 * i, -0.5 * one]);
-    assert_eq!(v.measure(), "1.000: 00\n0.250: 11\n0.160: 10\n0.000: 01\n");
+    assert_eq!(
+        format!("{}", v.measure()),
+        "1.000: 00\n0.250: 11\n0.160: 10\n0.000: 01\n"
+    );
 }

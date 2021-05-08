@@ -16,6 +16,13 @@ impl fmt::Display for QCircuit {
 }
 
 impl QCircuit {
+    pub fn empty() -> QCircuit {
+        QCircuit {
+            size: 0,
+            matrix: nalgebra::DMatrix::from_row_slice(1, 1, &[Complex::new(1.0, 0.0)]),
+        }
+    }
+
     pub fn one_qbit_gate(matrix: &[Complex; 4]) -> QCircuit {
         QCircuit {
             size: 1,
